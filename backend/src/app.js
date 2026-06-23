@@ -3,7 +3,8 @@ const cors = require("cors");
 const pool = require("./config/db");
 const userRoutes = require("./routes/user.routes");
 const authRoutes = require("./routes/auth.routes");
-
+const reportRoutes = require("./routes/report.routes");
+const dashboardRoutes = require("./routes/dashboard.routes");
 
 const app = express();
 
@@ -13,6 +14,8 @@ app.use(express.json());
 //routes
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/reports", reportRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 app.get("/", async (req, res) => {
   try {
