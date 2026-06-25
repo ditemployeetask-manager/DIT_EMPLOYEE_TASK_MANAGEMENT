@@ -138,7 +138,202 @@ const getLastUser = async () => {
 
   return result.rows[0];
 };
+const assignAdminGroup = async (adminId, groupId) => {
+  const result = await pool.query(
+    `
+    UPDATE users
+    SET
+      group_id = $1,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE
+      id = $2
+      AND role_id = 2
+    RETURNING
+      id,
+      employee_id,
+      name,
+      role_id,
+      group_id
+    `,
+    [groupId, adminId],
+  );
 
+  return result.rows[0];
+};
+const getUserById = async (id) => {
+  const result = await pool.query(
+    `
+    SELECT *
+    FROM users
+    WHERE id = $1
+    `,
+    [id],
+  );
+
+  return result.rows[0];
+};
+const getAllAdmins = async () => {
+  const result = await pool.query(`
+    SELECT
+      u.id,
+      u.employee_id,
+      u.name,
+      u.email,
+      u.phone,
+      u.designation,
+      u.status,
+      g.group_name,
+      u.created_at
+    FROM users u
+    LEFT JOIN groups g
+      ON u.group_id = g.id
+    WHERE u.role_id = 2
+    ORDER BY u.id ASC
+  `);
+
+  return result.rows;
+};
+const getAdminById = async (id) => {
+  const result = await pool.query(
+    `
+    SELECT
+      u.id,
+      u.employee_id,
+      u.name,
+      u.email,
+      u.phone,
+      u.designation,
+      u.status,
+      u.group_id,
+      g.group_name,
+      u.created_at,
+      u.updated_at
+    FROM users u
+    LEFT JOIN groups g
+      ON u.group_id = g.id
+    WHERE
+      u.id = $1
+      AND u.role_id = 2
+    `,
+    [id],
+  );
+
+  return result.rows[0];
+};
+const updateAdmin = async (id, adminData) => {
+  const result = await pool.query(
+    `
+    UPDATE users
+    SET
+      name = $1,
+      email = $2,
+      phone = $3,
+      designation = $4,
+      group_id = $5,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE
+      id = $6
+      AND role_id = 2
+    RETURNING
+      id,
+      employee_id,
+      name,
+      email,
+      phone,
+      designation,
+      group_id,
+      status,
+      updated_at
+    `,
+    [
+      adminData.name,
+      adminData.email,
+      adminData.phone,
+      adminData.designation,
+      adminData.groupId,
+      id,
+    ],
+  );
+
+  return result.rows[0];
+};
+const updateAdminStatus = async (id, status) => {
+  const result = await pool.query(
+    `
+    UPDATE users
+    SET
+      status = $1,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE
+      id = $2
+      AND role_id = 2
+    RETURNING
+      id,
+      employee_id,
+      name,
+      status,
+      updated_at
+    `,
+    [status, id],
+  );
+
+  return result.rows[0];
+};
+const changePassword = async (userId, password) => {
+  const result = await pool.query(
+    `
+    UPDATE users
+    SET
+      password = $1,
+      must_change_password = false,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = $2
+    RETURNING
+      id,
+      employee_id,
+      must_change_password
+    `,
+    [password, userId],
+  );
+
+  return result.rows[0];
+};
+const resetPassword = async (userId, password) => {
+  const result = await pool.query(
+    `
+    UPDATE users
+    SET
+      password = $1,
+      must_change_password = true,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = $2
+    RETURNING
+      id,
+      employee_id,
+      name,
+      email,
+      must_change_password
+    `,
+    [password, userId],
+  );
+
+  return result.rows[0];
+};
+const getAdminsByGroup = async (groupId) => {
+  const result = await pool.query(
+    `
+    SELECT id, name
+    FROM users
+    WHERE
+      role_id = 2
+      AND group_id = $1
+      AND status = true
+    `,
+    [groupId],
+  );
+
+  return result.rows;
+};
 module.exports = {
   getLastEmployee,
   createEmployee,
@@ -147,4 +342,13 @@ module.exports = {
   updateEmployee,
   getLastAdmin,
   getLastUser,
+  assignAdminGroup,
+  getUserById,
+  getAllAdmins,
+  getAdminById,
+  updateAdmin,
+  updateAdminStatus,
+  changePassword,
+  resetPassword,
+  getAdminsByGroup,
 };

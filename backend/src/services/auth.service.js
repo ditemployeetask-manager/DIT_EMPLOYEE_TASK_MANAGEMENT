@@ -1,6 +1,7 @@
 ﻿const authQuery = require("../queries/auth.query");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const userQuery = require("../queries/user.query");
 
 const login = async (employeeId, password) => {
   const user = await authQuery.getUserByEmployeeId(employeeId);
@@ -34,7 +35,20 @@ const login = async (employeeId, password) => {
     user,
   };
 };
+const changePassword = async (userId, currentPassword, newPassword) => {
+  const user = await userQuery.getUserById(userId);
 
+  const isMatch = await bcrypt.compare(currentPassword, user.password);
+
+  if (!isMatch) {
+    throw new Error("Current password is incorrect");
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+  return await userQuery.changePassword(userId, hashedPassword);
+};
 module.exports = {
   login,
+  changePassword,
 };

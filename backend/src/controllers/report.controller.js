@@ -32,7 +32,7 @@ const getMyReports = async (req, res) => {
 };
 const getTeamReports = async (req, res) => {
   try {
-    const reports = await reportService.getTeamReports();
+    const reports = await reportService.getTeamReports(req.user.userId);
 
     res.status(200).json({
       success: true,

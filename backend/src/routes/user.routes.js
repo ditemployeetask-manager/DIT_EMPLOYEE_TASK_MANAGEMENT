@@ -20,5 +20,40 @@ router.post(
   authorizeRoles(1),
   userController.createAdmin,
 );
-
+router.put(
+  "/admins/:id/group",
+  verifyToken,
+  authorizeRoles(1),
+  userController.assignAdminGroup,
+);
+router.get(
+  "/admins",
+  verifyToken,
+  authorizeRoles(1),
+  userController.getAllAdmins,
+);
+router.get(
+  "/admins/:id",
+  verifyToken,
+  authorizeRoles(1),
+  userController.getAdminById,
+);
+router.put(
+  "/admins/:id",
+  verifyToken,
+  authorizeRoles(1),
+  userController.updateAdmin,
+);
+router.patch(
+  "/admins/:id/status",
+  verifyToken,
+  authorizeRoles(1),
+  userController.updateAdminStatus,
+);
+router.put(
+  "/:id/reset-password",
+  verifyToken,
+  authorizeRoles(1),
+  userController.resetPassword,
+);
 module.exports = router;

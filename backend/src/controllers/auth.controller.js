@@ -17,7 +17,27 @@ const login = async (req, res) => {
     });
   }
 };
+const changePassword = async (req, res) => {
+  try {
+    const result = await authService.changePassword(
+      req.user.userId,
+      req.body.currentPassword,
+      req.body.newPassword,
+    );
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 
 module.exports = {
   login,
+  changePassword,
 };

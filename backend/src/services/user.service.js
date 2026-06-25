@@ -3,6 +3,7 @@ const userQuery = require("../queries/user.query");
 const generatePassword = require("../utils/generatePassword");
 const bcrypt = require("bcrypt");
 const generateAdminId = require("../utils/generateAdminId");
+const createNotification = require("../utils/createNotification");
 
 const createEmployee = async (employeeData) => {
   const lastEmployee = await userQuery.getLastEmployee();
@@ -25,7 +26,15 @@ const createEmployee = async (employeeData) => {
   });
 
   delete employee.password;
+  await createNotification(
+    employee.id,
+    "Welcome",
+    `Welcome to DIT Employee Task Management.
 
+Employee ID: ${employee.employee_id}
+
+Please change your temporary password after first login.`,
+  );
   return {
     employeeId,
     temporaryPassword,
@@ -81,11 +90,49 @@ const createAdmin = async (adminData) => {
     admin,
   };
 };
+const assignAdminGroup = async (adminId, groupId) => {
+  return await userQuery.assignAdminGroup(adminId, groupId);
+};
+const getAllAdmins = async () => {
+  return await userQuery.getAllAdmins();
+};
+const getAdminById = async (id) => {
+  return await userQuery.getAdminById(id);
+};
+const updateAdmin = async (id, adminData) => {
+  return await userQuery.updateAdmin(id, adminData);
+};
+const updateAdminStatus = async (id, status) => {
+  return await userQuery.updateAdminStatus(id, status);
+};
+const resetPassword = async (userId) => {
+  const temporaryPassword = generatePassword();
 
+  const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+
+  const user = await userQuery.resetPassword(userId, hashedPassword);
+
+  await createNotification(
+    user.id,
+    "Password Reset",
+    "Your password has been reset. Please login using the temporary password and change it immediately.",
+  );
+
+  return {
+    temporaryPassword,
+    user,
+  };
+};
 module.exports = {
   createEmployee,
   getAllEmployees,
   getEmployeeById,
   updateEmployee,
   createAdmin,
+  assignAdminGroup,
+  getAllAdmins,
+  getAdminById,
+  updateAdmin,
+  updateAdminStatus,
+  resetPassword,
 };

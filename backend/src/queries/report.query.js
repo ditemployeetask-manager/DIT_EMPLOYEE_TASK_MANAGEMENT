@@ -32,8 +32,9 @@ const getMyReports = async (userId) => {
 
   return result.rows;
 };
-const getTeamReports = async () => {
-  const result = await pool.query(`
+const getTeamReports = async (groupId) => {
+  const result = await pool.query(
+    `
     SELECT
       r.id,
       r.work_done,
@@ -49,8 +50,11 @@ const getTeamReports = async () => {
       ON r.user_id = u.id
     LEFT JOIN groups g
       ON u.group_id = g.id
+    WHERE u.group_id = $1
     ORDER BY r.report_date DESC
-  `);
+    `,
+    [groupId],
+  );
 
   return result.rows;
 };
@@ -99,6 +103,28 @@ const updateReport = async (reportId, workDone, tomorrowPlan) => {
 
   return result.rows[0];
 };
+const getAllTeamReports = async () => {
+  const result = await pool.query(`
+    SELECT
+      r.id,
+      r.work_done,
+      r.tomorrow_plan,
+      r.admin_remarks,
+      r.status,
+      r.report_date,
+      u.employee_id,
+      u.name,
+      g.group_name
+    FROM reports r
+    JOIN users u
+      ON r.user_id = u.id
+    LEFT JOIN groups g
+      ON u.group_id = g.id
+    ORDER BY r.report_date DESC
+  `);
+
+  return result.rows;
+};
 
 module.exports = {
   createReport,
@@ -107,4 +133,5 @@ module.exports = {
   reviewReport,
   getReportById,
   updateReport,
+  getAllTeamReports,
 };

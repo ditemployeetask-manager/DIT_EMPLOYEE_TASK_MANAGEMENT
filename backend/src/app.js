@@ -5,9 +5,9 @@ const userRoutes = require("./routes/user.routes");
 const authRoutes = require("./routes/auth.routes");
 const reportRoutes = require("./routes/report.routes");
 const dashboardRoutes = require("./routes/dashboard.routes");
-
+const groupRoutes = require("./routes/group.routes");
+const notificationRoutes = require("./routes/notification.routes");
 const app = express();
-
 app.use(cors());
 app.use(express.json());
 
@@ -16,6 +16,8 @@ app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/groups", groupRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 app.get("/", async (req, res) => {
   try {

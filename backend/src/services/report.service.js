@@ -1,4 +1,6 @@
 ﻿const reportQuery = require("../queries/report.query");
+const createNotification = require("../utils/createNotification");
+const userQuery = require("../queries/user.query");
 
 const createReport = async (userId, reportData) => {
   const reportDate = new Date(reportData.reportDate);
@@ -12,18 +14,39 @@ const createReport = async (userId, reportData) => {
     throw new Error("Future reports are not allowed");
   }
 
-  return await reportQuery.createReport({
+  const report = await reportQuery.createReport({
     userId,
     workDone: reportData.workDone,
     tomorrowPlan: reportData.tomorrowPlan,
     reportDate: reportData.reportDate,
   });
+
+  const employee = await userQuery.getUserById(userId);
+
+  const admins = await userQuery.getAdminsByGroup(employee.group_id);
+
+  for (const admin of admins) {
+    await createNotification(
+      admin.id,
+      "New Report Submitted",
+      `${employee.name} submitted a report for ${report.report_date.toISOString().split("T")[0]}.`,
+    );
+  }
+
+  return report;
 };
 const getMyReports = async (userId) => {
   return await reportQuery.getMyReports(userId);
 };
-const getTeamReports = async () => {
-  return await reportQuery.getTeamReports();
+
+const getTeamReports = async (userId) => {
+  const user = await userQuery.getUserById(userId);
+
+  if (user.role_id === 1) {
+    return await reportQuery.getAllTeamReports();
+  }
+
+  return await reportQuery.getTeamReports(user.group_id);
 };
 const reviewReport = async (reportId, reviewData) => {
   const allowedStatus = ["APPROVED", "REJECTED"];
@@ -32,11 +55,31 @@ const reviewReport = async (reportId, reviewData) => {
     throw new Error("Invalid Status");
   }
 
-  return await reportQuery.reviewReport(
+  const report = await reportQuery.reviewReport(
     reportId,
     reviewData.status,
     reviewData.adminRemarks,
   );
+
+  const employee = await userQuery.getUserById(report.user_id);
+
+  if (reviewData.status === "APPROVED") {
+    await createNotification(
+      employee.id,
+      "Report Approved",
+      `Your report for ${
+        report.report_date.toISOString().split("T")[0]
+      } has been approved.`,
+    );
+  } else {
+    await createNotification(
+      employee.id,
+      "Report Rejected",
+      `Your report has been rejected.\n\nRemarks: ${reviewData.adminRemarks}`,
+    );
+  }
+
+  return report;
 };
 const updateReport = async (reportId, userId, reportData) => {
   const report = await reportQuery.getReportById(reportId);
