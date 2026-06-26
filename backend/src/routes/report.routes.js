@@ -32,5 +32,11 @@ router.put(
   authorizeRoles(3),
   reportController.updateReport,
 );
+router.get(
+  "/export",
+  verifyToken,
+  authorizeRoles(1, 2),
+  reportController.exportAllReports,
+);
 
 module.exports = router;

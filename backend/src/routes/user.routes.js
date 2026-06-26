@@ -5,15 +5,31 @@ const userController = require("../controllers/user.controller");
 const verifyToken = require("../middleware/auth.middleware");
 const authorizeRoles = require("../middleware/role.middleware");
 
-router.post("/employees", userController.createEmployee);
+router.post(
+  "/employees",
+  verifyToken,
+  authorizeRoles(1),
+  userController.createEmployee,
+);
 router.get(
   "/employees",
   verifyToken,
   authorizeRoles(1, 2),
   userController.getAllEmployees,
 );
-router.get("/employees/:id", userController.getEmployeeById);
-router.put("/employees/:id", userController.updateEmployee);
+router.get(
+  "/employees/:id",
+  verifyToken,
+  authorizeRoles(1, 2),
+  userController.getEmployeeById,
+);
+
+router.put(
+  "/employees/:id",
+  verifyToken,
+  authorizeRoles(1),
+  userController.updateEmployee,
+);
 router.post(
   "/admins",
   verifyToken,

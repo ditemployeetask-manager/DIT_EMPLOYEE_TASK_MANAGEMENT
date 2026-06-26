@@ -2,7 +2,7 @@
 
 const createGroup = async (req, res) => {
   try {
-    const group = await groupService.createGroup(req.body);
+    const group = await groupService.createGroup(req.body, req.user.userId);
 
     res.status(201).json({
       success: true,
@@ -47,7 +47,11 @@ const getGroupById = async (req, res) => {
 };
 const updateGroup = async (req, res) => {
   try {
-    const group = await groupService.updateGroup(req.params.id, req.body);
+   const group = await groupService.updateGroup(
+     req.params.id,
+     req.body,
+     req.user.userId,
+   );
 
     res.status(200).json({
       success: true,
@@ -62,10 +66,11 @@ const updateGroup = async (req, res) => {
 };
 const updateGroupStatus = async (req, res) => {
   try {
-    const group = await groupService.updateGroupStatus(
-      req.params.id,
-      req.body.status,
-    );
+   const group = await groupService.updateGroupStatus(
+     req.params.id,
+     req.body.status,
+     req.user.userId,
+   );
 
     res.status(200).json({
       success: true,

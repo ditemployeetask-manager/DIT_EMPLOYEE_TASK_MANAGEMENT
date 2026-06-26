@@ -14,19 +14,19 @@ const getLastEmployee = async () => {
 const createEmployee = async (data) => {
   const result = await pool.query(
     `
-      INSERT INTO users
-      (
-        employee_id,
-        name,
-        email,
-        phone,
-        password,
-        role_id,
-        group_id,
-        designation
-      )
-      VALUES
-      ($1,$2,$3,$4,$5,$6,$7,$8)
+      INSERT INTO users (
+    employee_id,
+    name,
+    email,
+    phone,
+    password,
+    role_id,
+    group_id,
+    designation,
+    created_by
+)
+VALUES
+($1,$2,$3,$4,$5,$6,$7,$8,$9)
       RETURNING *
     `,
     [
@@ -38,6 +38,7 @@ const createEmployee = async (data) => {
       data.roleId,
       data.groupId,
       data.designation,
+      data.createdBy,
     ],
   );
 

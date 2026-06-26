@@ -2,6 +2,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const userQuery = require("../queries/user.query");
+const createAuditLog = require("../utils/createAuditLog");
 
 const login = async (employeeId, password) => {
   const user = await authQuery.getUserByEmployeeId(employeeId);
@@ -46,7 +47,17 @@ const changePassword = async (userId, currentPassword, newPassword) => {
 
   const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-  return await userQuery.changePassword(userId, hashedPassword);
+  const updatedUser = await userQuery.changePassword(userId, hashedPassword);
+
+  await createAuditLog(
+    userId,
+    "CHANGE_PASSWORD",
+    "USER",
+    userId,
+    "Changed own password",
+  );
+
+  return updatedUser;
 };
 module.exports = {
   login,

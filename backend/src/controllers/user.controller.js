@@ -2,7 +2,7 @@
 
 const createEmployee = async (req, res) => {
   try {
-    const result = await userService.createEmployee(req.body);
+   const result = await userService.createEmployee(req.body, req.user.userId);
 
     res.status(201).json({
       success: true,
@@ -57,7 +57,11 @@ const getEmployeeById = async (req, res) => {
 
 const updateEmployee = async (req, res) => {
   try {
-    const employee = await userService.updateEmployee(req.params.id, req.body);
+    const employee = await userService.updateEmployee(
+      req.params.id,
+      req.body,
+      req.user.userId,
+    );
 
     res.status(200).json({
       success: true,
@@ -73,7 +77,7 @@ const updateEmployee = async (req, res) => {
 
 const createAdmin = async (req, res) => {
   try {
-    const result = await userService.createAdmin(req.body);
+    const result = await userService.createAdmin(req.body, req.user.userId);
 
     res.status(201).json({
       success: true,
@@ -91,6 +95,7 @@ const assignAdminGroup = async (req, res) => {
     const admin = await userService.assignAdminGroup(
       req.params.id,
       req.body.groupId,
+      req.user.userId,
     );
 
     res.status(200).json({
@@ -136,7 +141,11 @@ const getAdminById = async (req, res) => {
 };
 const updateAdmin = async (req, res) => {
   try {
-    const admin = await userService.updateAdmin(req.params.id, req.body);
+    const admin = await userService.updateAdmin(
+      req.params.id,
+      req.body,
+      req.user.userId,
+    );
 
     res.status(200).json({
       success: true,
@@ -151,10 +160,11 @@ const updateAdmin = async (req, res) => {
 };
 const updateAdminStatus = async (req, res) => {
   try {
-    const admin = await userService.updateAdminStatus(
-      req.params.id,
-      req.body.status,
-    );
+   const admin = await userService.updateAdminStatus(
+     req.params.id,
+     req.body.status,
+     req.user.userId,
+   );
 
     res.status(200).json({
       success: true,
@@ -169,7 +179,10 @@ const updateAdminStatus = async (req, res) => {
 };
 const resetPassword = async (req, res) => {
   try {
-    const result = await userService.resetPassword(req.params.id);
+    const result = await userService.resetPassword(
+      req.params.id,
+      req.user.userId,
+    );
 
     res.status(200).json({
       success: true,

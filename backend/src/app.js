@@ -7,6 +7,7 @@ const reportRoutes = require("./routes/report.routes");
 const dashboardRoutes = require("./routes/dashboard.routes");
 const groupRoutes = require("./routes/group.routes");
 const notificationRoutes = require("./routes/notification.routes");
+const auditRoutes = require("./routes/audit.routes");
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -18,6 +19,7 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/audit-logs", auditRoutes);
 
 app.get("/", async (req, res) => {
   try {

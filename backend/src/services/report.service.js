@@ -1,8 +1,10 @@
 ﻿const reportQuery = require("../queries/report.query");
 const createNotification = require("../utils/createNotification");
 const userQuery = require("../queries/user.query");
+const createAuditLog = require("../utils/createAuditLog");
+const { exportReports } = require("../exports/report.export");
 
-const createReport = async (userId, reportData) => {
+const createReport = async (userId, reportData, createdBy) => {
   const reportDate = new Date(reportData.reportDate);
 
   const today = new Date();
@@ -32,6 +34,15 @@ const createReport = async (userId, reportData) => {
       `${employee.name} submitted a report for ${report.report_date.toISOString().split("T")[0]}.`,
     );
   }
+  await createAuditLog(
+    createdBy,
+    "CREATE_REPORT",
+    "REPORT",
+    report.id,
+    `${employee.name} submitted report for ${
+      report.report_date.toISOString().split("T")[0]
+    }`,
+  );
 
   return report;
 };
@@ -48,18 +59,19 @@ const getTeamReports = async (userId) => {
 
   return await reportQuery.getTeamReports(user.group_id);
 };
-const reviewReport = async (reportId, reviewData) => {
+const reviewReport = async (reportId, reviewData, reviewedBy) => {
   const allowedStatus = ["APPROVED", "REJECTED"];
 
   if (!allowedStatus.includes(reviewData.status)) {
     throw new Error("Invalid Status");
   }
 
-  const report = await reportQuery.reviewReport(
-    reportId,
-    reviewData.status,
-    reviewData.adminRemarks,
-  );
+ const report = await reportQuery.reviewReport(
+   reportId,
+   reviewData.status,
+   reviewData.adminRemarks,
+   reviewedBy,
+ );
 
   const employee = await userQuery.getUserById(report.user_id);
 
@@ -78,10 +90,19 @@ const reviewReport = async (reportId, reviewData) => {
       `Your report has been rejected.\n\nRemarks: ${reviewData.adminRemarks}`,
     );
   }
+  await createAuditLog(
+    reviewedBy,
+    reviewData.status === "APPROVED" ? "APPROVE_REPORT" : "REJECT_REPORT",
+    "REPORT",
+    report.id,
+    reviewData.status === "APPROVED"
+      ? `Approved report ${report.id}`
+      : `Rejected report ${report.id}`,
+  );
 
   return report;
 };
-const updateReport = async (reportId, userId, reportData) => {
+const updateReport = async (reportId, userId, reportData, updatedBy) => {
   const report = await reportQuery.getReportById(reportId);
 
   if (!report) {
@@ -96,17 +117,30 @@ const updateReport = async (reportId, userId, reportData) => {
     throw new Error("Approved reports cannot be edited");
   }
 
-  return await reportQuery.updateReport(
+  const updatedReport = await reportQuery.updateReport(
     reportId,
     reportData.workDone,
     reportData.tomorrowPlan,
   );
+  await createAuditLog(
+    updatedBy,
+    "UPDATE_REPORT",
+    "REPORT",
+    updatedReport.id,
+    `Updated report ${updatedReport.id}`,
+  );
+  return updatedReport;
 };
+const exportAllReports = async () => {
+  const reports = await reportQuery.getReportsForExport();
 
+  return await exportReports(reports);
+};
 module.exports = {
   createReport,
   getMyReports,
   getTeamReports,
   reviewReport,
   updateReport,
+  exportAllReports,
 };

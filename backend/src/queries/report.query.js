@@ -58,18 +58,19 @@ const getTeamReports = async (groupId) => {
 
   return result.rows;
 };
-const reviewReport = async (reportId, status, adminRemarks) => {
+const reviewReport = async (reportId, status, adminRemarks, reviewedBy) => {
   const result = await pool.query(
     `
-    UPDATE reports
-    SET
-      status = $1,
-      admin_remarks = $2,
-      updated_at = CURRENT_TIMESTAMP
-    WHERE id = $3
-    RETURNING *
-    `,
-    [status, adminRemarks, reportId],
+  UPDATE reports
+  SET
+    status = $1,
+    admin_remarks = $2,
+    reviewed_by = $3,
+    updated_at = CURRENT_TIMESTAMP
+  WHERE id = $4
+  RETURNING *
+  `,
+    [status, adminRemarks, reviewedBy, reportId],
   );
 
   return result.rows[0];
@@ -125,7 +126,30 @@ const getAllTeamReports = async () => {
 
   return result.rows;
 };
+const getReportsForExport = async () => {
+  const result = await pool.query(`
+    SELECT
+      u.employee_id,
+      u.name,
+      g.group_name,
+      r.report_date,
+      r.work_done,
+      r.tomorrow_plan,
+      r.status,
+      reviewer.name AS reviewed_by,
+      r.admin_remarks
+    FROM reports r
+    JOIN users u
+      ON r.user_id = u.id
+    LEFT JOIN groups g
+      ON u.group_id = g.id
+    LEFT JOIN users reviewer
+      ON r.reviewed_by = reviewer.id
+    ORDER BY r.report_date DESC
+  `);
 
+  return result.rows;
+};
 module.exports = {
   createReport,
   getMyReports,
@@ -134,4 +158,5 @@ module.exports = {
   getReportById,
   updateReport,
   getAllTeamReports,
+  getReportsForExport,
 };
