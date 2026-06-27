@@ -69,10 +69,23 @@ const updateGroupStatus = async (id, status) => {
 
   return result.rows[0];
 };
+const getGroupByName = async (groupName) => {
+  const result = await pool.query(
+    `
+    SELECT id
+    FROM groups
+    WHERE LOWER(group_name) = LOWER($1)
+    `,
+    [groupName],
+  );
+
+  return result.rows[0];
+};
 module.exports = {
   createGroup,
   getAllGroups,
   getGroupById,
   updateGroup,
   updateGroupStatus,
+  getGroupByName,
 };

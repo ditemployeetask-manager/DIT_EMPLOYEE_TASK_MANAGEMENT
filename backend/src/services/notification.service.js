@@ -12,9 +12,13 @@ const markAsRead = async (id) => {
 const getUnreadCount = async (userId) => {
   return await notificationQuery.getUnreadCount(userId);
 };
+const markAllAsRead = async (userId) => {
+  return await notificationQuery.markAllAsRead(userId);
+};
 module.exports = {
   createNotification,
   getMyNotifications,
   markAsRead,
   getUnreadCount,
+  markAllAsRead,
 };

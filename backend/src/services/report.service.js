@@ -46,18 +46,44 @@ const createReport = async (userId, reportData, createdBy) => {
 
   return report;
 };
-const getMyReports = async (userId) => {
-  return await reportQuery.getMyReports(userId);
+const getMyReports = async (userId, page, limit, status, reportDate) => {
+  return await reportQuery.getMyReports(
+    userId,
+    page,
+    limit,
+    status,
+    reportDate,
+  );
 };
 
-const getTeamReports = async (userId) => {
+const getTeamReports = async (
+  userId,
+  page,
+  limit,
+  search,
+  status,
+  reportDate,
+) => {
   const user = await userQuery.getUserById(userId);
 
   if (user.role_id === 1) {
-    return await reportQuery.getAllTeamReports();
+    return await reportQuery.getAllTeamReports(
+      page,
+      limit,
+      search,
+      status,
+      reportDate,
+    );
   }
 
-  return await reportQuery.getTeamReports(user.group_id);
+  return await reportQuery.getTeamReports(
+    user.group_id,
+    page,
+    limit,
+    search,
+    status,
+    reportDate,
+  );
 };
 const reviewReport = async (reportId, reviewData, reviewedBy) => {
   const allowedStatus = ["APPROVED", "REJECTED"];

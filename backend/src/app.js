@@ -8,11 +8,16 @@ const dashboardRoutes = require("./routes/dashboard.routes");
 const groupRoutes = require("./routes/group.routes");
 const notificationRoutes = require("./routes/notification.routes");
 const auditRoutes = require("./routes/audit.routes");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
+const { swaggerUi, swaggerDocument } = require("./docs/swagger");
+
 const app = express();
 app.use(cors());
+app.use(helmet());
 app.use(express.json());
 
-//All routes
+//routes
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/reports", reportRoutes);

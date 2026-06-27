@@ -19,11 +19,19 @@ const createEmployee = async (req, res) => {
 };
 const getAllEmployees = async (req, res) => {
   try {
-    const employees = await userService.getAllEmployees();
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || "";
+
+    const result = await userService.getAllEmployees(page, limit, search);
 
     res.status(200).json({
       success: true,
-      data: employees,
+      page,
+      limit,
+      totalRecords: result.total,
+      totalPages: Math.ceil(result.total / limit),
+      data: result.employees,
     });
   } catch (error) {
     res.status(500).json({
@@ -111,11 +119,19 @@ const assignAdminGroup = async (req, res) => {
 };
 const getAllAdmins = async (req, res) => {
   try {
-    const admins = await userService.getAllAdmins();
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || "";
+
+    const result = await userService.getAllAdmins(page, limit, search);
 
     res.status(200).json({
       success: true,
-      data: admins,
+      page,
+      limit,
+      totalRecords: result.total,
+      totalPages: Math.ceil(result.total / limit),
+      data: result.admins,
     });
   } catch (error) {
     res.status(500).json({

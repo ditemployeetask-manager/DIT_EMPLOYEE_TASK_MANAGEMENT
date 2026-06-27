@@ -2,6 +2,11 @@
 const createAuditLog = require("../utils/createAuditLog");
 
 const createGroup = async (groupData, createdBy) => {
+  const existingGroup = await groupQuery.getGroupByName(groupData.groupName);
+
+  if (existingGroup) {
+    throw new Error("Group name already exists");
+  }
   const group = await groupQuery.createGroup(groupData);
 
   await createAuditLog(

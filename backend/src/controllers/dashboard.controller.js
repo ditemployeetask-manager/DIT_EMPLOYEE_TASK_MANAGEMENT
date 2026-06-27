@@ -17,7 +17,7 @@ const getEmployeeDashboard = async (req, res) => {
 };
 const getAdminDashboard = async (req, res) => {
   try {
-    const stats = await dashboardService.getAdminDashboard();
+    const stats = await dashboardService.getAdminDashboard(req.user.userId);
 
     res.status(200).json({
       success: true,

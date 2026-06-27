@@ -3,8 +3,8 @@ const dashboardQuery = require("../queries/dashboard.query");
 const getEmployeeDashboard = async (userId) => {
   return await dashboardQuery.getEmployeeStats(userId);
 };
-const getAdminDashboard = async () => {
-  return await dashboardQuery.getAdminStats();
+const getAdminDashboard = async (userId) => {
+  return await dashboardQuery.getAdminStats(userId);
 };
 const getSuperAdminDashboard = async () => {
   return await dashboardQuery.getSuperAdminStats();

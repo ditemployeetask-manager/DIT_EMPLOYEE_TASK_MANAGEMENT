@@ -7,6 +7,17 @@ const createNotification = require("../utils/createNotification");
 const createAuditLog = require("../utils/createAuditLog");
 
 const createEmployee = async (employeeData, createdBy) => {
+  const emailExists = await userQuery.getUserByEmail(employeeData.email);
+
+  if (emailExists) {
+    throw new Error("Email already exists");
+  }
+
+  const phoneExists = await userQuery.getUserByPhone(employeeData.phone);
+
+  if (phoneExists) {
+    throw new Error("Phone number already exists");
+  }
   const lastEmployee = await userQuery.getLastEmployee();
 
   const employeeId = generateEmployeeId(lastEmployee?.employee_id);
@@ -51,8 +62,8 @@ Please change your temporary password after first login.`,
   };
 };
 
-const getAllEmployees = async () => {
-  return await userQuery.getAllEmployees();
+const getAllEmployees = async (page, limit, search) => {
+  return await userQuery.getAllEmployees(page, limit, search);
 };
 const getEmployeeById = async (id) => {
   const employee = await userQuery.getEmployeeById(id);
@@ -79,6 +90,17 @@ const updateEmployee = async (id, employeeData, updatedBy) => {
 };
 
 const createAdmin = async (adminData, createdBy) => {
+  const emailExists = await userQuery.getUserByEmail(adminData.email);
+
+  if (emailExists) {
+    throw new Error("Email already exists");
+  }
+
+  const phoneExists = await userQuery.getUserByPhone(adminData.phone);
+
+  if (phoneExists) {
+    throw new Error("Phone number already exists");
+  }
   const lastUser = await userQuery.getLastUser();
 
   const adminId = generateAdminId(lastUser?.employee_id);
@@ -135,8 +157,8 @@ const assignAdminGroup = async (adminId, groupId, updatedBy) => {
 
   return admin;
 };
-const getAllAdmins = async () => {
-  return await userQuery.getAllAdmins();
+const getAllAdmins = async (page, limit, search) => {
+  return await userQuery.getAllAdmins(page, limit, search);
 };
 const getAdminById = async (id) => {
   return await userQuery.getAdminById(id);

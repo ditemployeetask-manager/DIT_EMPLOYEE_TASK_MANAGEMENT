@@ -1,0 +1,1856 @@
+openapi: 3.0.0
+
+info:
+  title: DIT Employee Task Management API
+  description: |
+    Backend API documentation for the DIT Employee Task Management System.
+
+    ### Role Authorization Map:
+    - **1**: Superadmin (`SUPER_ADMIN`)
+    - **2**: Admin (`ADMIN`)
+    - **3**: Employee (`EMPLOYEE`)
+
+    ### Authentication:
+    Click the "Authorize" button and enter:
+    `Bearer <your_jwt_token>`
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:5000/api
+    description: Local Server
+
+tags:
+  - name: Authentication
+    description: Login and password management APIs
+  - name: Employees
+    description: Employee user management (Admins/Superadmins)
+  - name: Admins
+    description: Admin user management (Superadmins)
+  - name: Groups
+    description: Group/Department management APIs
+  - name: Reports
+    description: Daily task and work report APIs
+  - name: Notifications
+    description: Notification alerts for users
+  - name: Audit Logs
+    description: Action tracking/audit log history (Superadmin)
+  - name: Dashboard
+    description: Statistical summaries for different user roles
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Operation completed successfully
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: An error occurred
+
+    UserResponseData:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        employee_id:
+          type: string
+          example: DIT-EMP-0001
+        name:
+          type: string
+          example: Raj Sutradhar
+        email:
+          type: string
+          example: raj@gmail.com
+        phone:
+          type: string
+          example: "9876543210"
+        role_id:
+          type: integer
+          example: 3
+        group_id:
+          type: integer
+          nullable: true
+          example: 1
+        designation:
+          type: string
+          example: Software Engineer
+        status:
+          type: boolean
+          example: true
+        must_change_password:
+          type: boolean
+          example: true
+
+    GroupData:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        group_name:
+          type: string
+          example: Development Team
+        description:
+          type: string
+          example: Core backend developers
+        status:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ReportData:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 12
+        user_id:
+          type: integer
+          example: 5
+        work_done:
+          type: string
+          example: Implemented OAuth2 auth flow
+        tomorrow_plan:
+          type: string
+          example: Write unit tests for auth flow
+        admin_remarks:
+          type: string
+          nullable: true
+          example: Good job.
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED]
+          example: PENDING
+        report_date:
+          type: string
+          format: date
+          example: "2026-06-27"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    NotificationData:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 45
+        user_id:
+          type: integer
+          example: 5
+        title:
+          type: string
+          example: Report Approved
+        message:
+          type: string
+          example: Your report for 2026-06-27 has been approved.
+        is_read:
+          type: boolean
+          example: false
+        created_at:
+          type: string
+          format: date-time
+
+    AuditLogData:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 102
+        employee_id:
+          type: string
+          example: DIT-ADM-0002
+        name:
+          type: string
+          example: Admin Jane
+        role_name:
+          type: string
+          example: ADMIN
+        action:
+          type: string
+          example: UPDATE_EMPLOYEE
+        entity_type:
+          type: string
+          example: USER
+        entity_id:
+          type: integer
+          example: 5
+        description:
+          type: string
+          example: Updated employee DIT-EMP-0005
+        created_at:
+          type: string
+          format: date-time
+
+security:
+  - bearerAuth: []
+
+paths:
+
+  #########################################
+  # AUTHENTICATION
+  #########################################
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login User
+      description: Login using Employee ID and Password. (Public - Accessible by all roles)
+      x-allowed-roles: [1, 2, 3]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - employeeId
+                - password
+              properties:
+                employeeId:
+                  type: string
+                  example: DIT-EMP-0001
+                password:
+                  type: string
+                  example: Password@123
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/UserResponseData'
+                      - type: object
+                        properties:
+                          token:
+                            type: string
+                            example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/change-password:
+    put:
+      tags:
+        - Authentication
+      summary: Change Password
+      description: Change your current password. (Accessible by whole: **1** (Superadmin), **2** (Admin), **3** (Employee))
+      x-allowed-roles: [1, 2, 3]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - currentPassword
+                - newPassword
+              properties:
+                currentPassword:
+                  type: string
+                  example: Password@123
+                newPassword:
+                  type: string
+                  example: NewPassword@123
+      responses:
+        "200":
+          description: Password changed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 5
+                      employee_id:
+                        type: string
+                        example: DIT-EMP-0005
+                      must_change_password:
+                        type: boolean
+                        example: false
+        "400":
+          description: Bad Request (Invalid old password or validation issue)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "401":
+          description: Unauthorized / Invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  #########################################
+  # USERS / EMPLOYEES / ADMINS
+  #########################################
+
+  /users/employees:
+    post:
+      tags:
+        - Employees
+      summary: Create Employee
+      description: Create a new employee. (Accessible by: **1** (Superadmin))
+      x-allowed-roles: [1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - phone
+                - designation
+                - groupId
+              properties:
+                name:
+                  type: string
+                  example: Raj Sutradhar
+                email:
+                  type: string
+                  example: raj@gmail.com
+                phone:
+                  type: string
+                  example: "9876543210"
+                designation:
+                  type: string
+                  example: Software Engineer
+                groupId:
+                  type: integer
+                  example: 1
+      responses:
+        "201":
+          description: Employee created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      employeeId:
+                        type: string
+                        example: DIT-EMP-0006
+                      temporaryPassword:
+                        type: string
+                        example: aBcdEfgH12
+                      employee:
+                        $ref: '#/components/schemas/UserResponseData'
+        "500":
+          description: Server Error (e.g. email/phone already exists)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags:
+        - Employees
+      summary: Get All Employees
+      description: Get paginated employee list. (Accessible by: **1** (Superadmin), **2** (Admin))
+      x-allowed-roles: [1, 2]
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search by name, employee_id, or email
+      responses:
+        "200":
+          description: List of employees retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  page:
+                    type: integer
+                    example: 1
+                  limit:
+                    type: integer
+                    example: 10
+                  totalRecords:
+                    type: integer
+                    example: 25
+                  totalPages:
+                    type: integer
+                    example: 3
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 5
+                        employee_id:
+                          type: string
+                          example: DIT-EMP-0005
+                        name:
+                          type: string
+                          example: Raj Sutradhar
+                        email:
+                          type: string
+                          example: raj@gmail.com
+                        phone:
+                          type: string
+                          example: "9876543210"
+                        designation:
+                          type: string
+                          example: Software Engineer
+                        group_name:
+                          type: string
+                          example: Dev Group
+                        status:
+                          type: boolean
+                          example: true
+                        created_at:
+                          type: string
+                          format: date-time
+
+  /users/employees/{id}:
+    get:
+      tags:
+        - Employees
+      summary: Get Employee By ID
+      description: Retrieve detail of a specific employee. (Accessible by: **1** (Superadmin), **2** (Admin))
+      x-allowed-roles: [1, 2]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Employee details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 5
+                      employee_id:
+                        type: string
+                        example: DIT-EMP-0005
+                      name:
+                        type: string
+                        example: Raj Sutradhar
+                      email:
+                        type: string
+                        example: raj@gmail.com
+                      phone:
+                        type: string
+                        example: "9876543210"
+                      designation:
+                        type: string
+                        example: Software Engineer
+                      group_name:
+                        type: string
+                        example: Dev Group
+                      status:
+                        type: boolean
+                        example: true
+                      created_at:
+                        type: string
+                        format: date-time
+        "404":
+          description: Employee not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Employees
+      summary: Update Employee Details
+      description: Update an employee's details. (Accessible by: **1** (Superadmin))
+      x-allowed-roles: [1]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - phone
+                - designation
+                - groupId
+                - status
+              properties:
+                name:
+                  type: string
+                  example: Raj Sutradhar
+                email:
+                  type: string
+                  example: raj@gmail.com
+                phone:
+                  type: string
+                  example: "9876543210"
+                designation:
+                  type: string
+                  example: Senior Software Engineer
+                groupId:
+                  type: integer
+                  example: 1
+                status:
+                  type: boolean
+                  example: true
+      responses:
+        "200":
+          description: Employee updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/UserResponseData'
+
+  /users/admins:
+    post:
+      tags:
+        - Admins
+      summary: Create Admin
+      description: Create a new Admin. (Accessible by: **1** (Superadmin))
+      x-allowed-roles: [1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - phone
+                - designation
+                - groupId
+              properties:
+                name:
+                  type: string
+                  example: Jane Doe
+                email:
+                  type: string
+                  example: jane@gmail.com
+                phone:
+                  type: string
+                  example: "9876543211"
+                designation:
+                  type: string
+                  example: Technical Manager
+                groupId:
+                  type: integer
+                  example: 1
+      responses:
+        "201":
+          description: Admin created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      adminId:
+                        type: string
+                        example: DIT-ADM-0002
+                      temporaryPassword:
+                        type: string
+                        example: mNopQrsT99
+                      admin:
+                        $ref: '#/components/schemas/UserResponseData'
+
+    get:
+      tags:
+        - Admins
+      summary: Get All Admins
+      description: Retrieve a paginated list of Admins. (Accessible by: **1** (Superadmin))
+      x-allowed-roles: [1]
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search by name, employee_id, or email
+      responses:
+        "200":
+          description: List of Admins retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  page:
+                    type: integer
+                    example: 1
+                  limit:
+                    type: integer
+                    example: 10
+                  totalRecords:
+                    type: integer
+                    example: 5
+                  totalPages:
+                    type: integer
+                    example: 1
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 2
+                        employee_id:
+                          type: string
+                          example: DIT-ADM-0001
+                        name:
+                          type: string
+                          example: Admin User
+                        email:
+                          type: string
+                          example: admin@gmail.com
+                        phone:
+                          type: string
+                          example: "9988776655"
+                        designation:
+                          type: string
+                          example: Head Admin
+                        status:
+                          type: boolean
+                          example: true
+                        group_name:
+                          type: string
+                          nullable: true
+                          example: Dev Group
+                        created_at:
+                          type: string
+                          format: date-time
+
+  /users/admins/{id}:
+    get:
+      tags:
+        - Admins
+      summary: Get Admin By ID
+      description: Get details of a specific Admin. (Accessible by: **1** (Superadmin))
+      x-allowed-roles: [1]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Admin details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 2
+                      employee_id:
+                        type: string
+                        example: DIT-ADM-0001
+                      name:
+                        type: string
+                        example: Admin User
+                      email:
+                        type: string
+                        example: admin@gmail.com
+                      phone:
+                        type: string
+                        example: "9988776655"
+                      designation:
+                        type: string
+                        example: Head Admin
+                      status:
+                        type: boolean
+                        example: true
+                      group_id:
+                        type: integer
+                        example: 1
+                      group_name:
+                        type: string
+                        example: Dev Group
+                      created_at:
+                        type: string
+                        format: date-time
+                      updated_at:
+                        type: string
+                        format: date-time
+
+    put:
+      tags:
+        - Admins
+      summary: Update Admin Details
+      description: Update an Admin's details. (Accessible by: **1** (Superadmin))
+      x-allowed-roles: [1]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - phone
+                - designation
+                - groupId
+              properties:
+                name:
+                  type: string
+                  example: Updated Admin Name
+                email:
+                  type: string
+                  example: admin_updated@gmail.com
+                phone:
+                  type: string
+                  example: "9988776655"
+                designation:
+                  type: string
+                  example: Managing Admin
+                groupId:
+                  type: integer
+                  example: 1
+      responses:
+        "200":
+          description: Admin updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      employee_id:
+                        type: string
+                      name:
+                        type: string
+                      email:
+                        type: string
+                      phone:
+                        type: string
+                      designation:
+                        type: string
+                      group_id:
+                        type: integer
+                      status:
+                        type: boolean
+                      updated_at:
+                        type: string
+                        format: date-time
+
+  /users/admins/{id}/group:
+    put:
+      tags:
+        - Admins
+      summary: Assign Admin to Group
+      description: Assign or reassign an admin to a specific group. (Accessible by: **1** (Superadmin))
+      x-allowed-roles: [1]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - groupId
+              properties:
+                groupId:
+                  type: integer
+                  example: 2
+      responses:
+        "200":
+          description: Group assigned successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      employee_id:
+                        type: string
+                      name:
+                        type: string
+                      role_id:
+                        type: integer
+                      group_id:
+                        type: integer
+
+  /users/admins/{id}/status:
+    patch:
+      tags:
+        - Admins
+      summary: Change Admin Active Status
+      description: Activate or deactivate an Admin. (Accessible by: **1** (Superadmin))
+      x-allowed-roles: [1]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: boolean
+                  example: false
+      responses:
+        "200":
+          description: Admin status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      employee_id:
+                        type: string
+                      name:
+                        type: string
+                      status:
+                        type: boolean
+                      updated_at:
+                        type: string
+                        format: date-time
+
+  /users/{id}/reset-password:
+    put:
+      tags:
+        - Employees
+        - Admins
+      summary: Reset User Password
+      description: Reset any User's (Employee/Admin) password to a new temporary password. (Accessible by: **1** (Superadmin))
+      x-allowed-roles: [1]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      temporaryPassword:
+                        type: string
+                        example: tEmpPass772
+                      user:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                          employee_id:
+                            type: string
+                          name:
+                            type: string
+                          email:
+                            type: string
+                          must_change_password:
+                            type: boolean
+
+  #########################################
+  # GROUPS
+  #########################################
+
+  /groups:
+    post:
+      tags:
+        - Groups
+      summary: Create Group
+      description: Create a new work group/department. (Accessible by: **1** (Superadmin))
+      x-allowed-roles: [1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - groupName
+              properties:
+                groupName:
+                  type: string
+                  example: Dev Team
+                description:
+                  type: string
+                  example: Development department
+      responses:
+        "201":
+          description: Group created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/GroupData'
+
+    get:
+      tags:
+        - Groups
+      summary: Get All Groups
+      description: Retrieve a list of all groups. (Accessible by: **1** (Superadmin), **2** (Admin))
+      x-allowed-roles: [1, 2]
+      responses:
+        "200":
+          description: List of groups retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GroupData'
+
+  /groups/{id}:
+    get:
+      tags:
+        - Groups
+      summary: Get Group By ID
+      description: Retrieve details of a specific group. (Accessible by: **1** (Superadmin), **2** (Admin))
+      x-allowed-roles: [1, 2]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Group details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/GroupData'
+
+    put:
+      tags:
+        - Groups
+      summary: Update Group
+      description: Update details of an existing group. (Accessible by: **1** (Superadmin))
+      x-allowed-roles: [1]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - groupName
+              properties:
+                groupName:
+                  type: string
+                  example: Dev Team Updated
+                description:
+                  type: string
+                  example: New description
+      responses:
+        "200":
+          description: Group updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/GroupData'
+
+  /groups/{id}/status:
+    patch:
+      tags:
+        - Groups
+      summary: Update Group Active Status
+      description: Activate or deactivate a group. (Accessible by: **1** (Superadmin))
+      x-allowed-roles: [1]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: boolean
+                  example: false
+      responses:
+        "200":
+          description: Group status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/GroupData'
+
+  #########################################
+  # REPORTS
+  #########################################
+
+  /reports:
+    post:
+      tags:
+        - Reports
+      summary: Submit Daily Report
+      description: Submit a new daily work report. (Accessible by: **3** (Employee))
+      x-allowed-roles: [3]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - workDone
+                - reportDate
+              properties:
+                workDone:
+                  type: string
+                  example: Finished REST API integration.
+                tomorrowPlan:
+                  type: string
+                  example: Start writing tests.
+                reportDate:
+                  type: string
+                  format: date
+                  example: "2026-06-27"
+      responses:
+        "201":
+          description: Report submitted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ReportData'
+        "400":
+          description: Bad Request (e.g. future date report)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /reports/my-reports:
+    get:
+      tags:
+        - Reports
+      summary: Get My Reports
+      description: Retrieve own submitted reports. (Accessible by: **3** (Employee))
+      x-allowed-roles: [3]
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [PENDING, APPROVED, REJECTED]
+        - in: query
+          name: reportDate
+          schema:
+            type: string
+            format: date
+            example: "2026-06-27"
+      responses:
+        "200":
+          description: List of user's own reports retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  page:
+                    type: integer
+                    example: 1
+                  limit:
+                    type: integer
+                    example: 10
+                  totalRecords:
+                    type: integer
+                    example: 15
+                  totalPages:
+                    type: integer
+                    example: 2
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ReportData'
+
+  /reports/team:
+    get:
+      tags:
+        - Reports
+      summary: Get Team Reports
+      description: Retrieve reports submitted by the group/team members. Admins see reports of their group; Superadmins see all reports. (Accessible by: **1** (Superadmin), **2** (Admin))
+      x-allowed-roles: [1, 2]
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search by employee name or ID
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [PENDING, APPROVED, REJECTED]
+        - in: query
+          name: reportDate
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: List of team reports retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  page:
+                    type: integer
+                    example: 1
+                  limit:
+                    type: integer
+                    example: 10
+                  totalRecords:
+                    type: integer
+                  totalPages:
+                    type: integer
+                  data:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/ReportData'
+                        - type: object
+                          properties:
+                            employee_name:
+                              type: string
+                              example: Raj Sutradhar
+                            employee_id:
+                              type: string
+                              example: DIT-EMP-0005
+
+  /reports/{id}/review:
+    put:
+      tags:
+        - Reports
+      summary: Review Daily Report
+      description: Approve or Reject an employee's report. (Accessible by: **1** (Superadmin), **2** (Admin))
+      x-allowed-roles: [1, 2]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [APPROVED, REJECTED]
+                  example: APPROVED
+                adminRemarks:
+                  type: string
+                  example: Well documented.
+      responses:
+        "200":
+          description: Report reviewed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ReportData'
+        "400":
+          description: Invalid review status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /reports/{id}:
+    put:
+      tags:
+        - Reports
+      summary: Update Submitted Report
+      description: Edit a submitted report. Approved reports cannot be edited. (Accessible by: **3** (Employee))
+      x-allowed-roles: [3]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - workDone
+              properties:
+                workDone:
+                  type: string
+                  example: Corrected minor bug in DB connection.
+                tomorrowPlan:
+                  type: string
+                  example: Perform benchmarks.
+      responses:
+        "200":
+          description: Report updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ReportData'
+        "400":
+          description: Cannot edit approved reports, or invalid request details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /reports/export:
+    get:
+      tags:
+        - Reports
+      summary: Export Reports to Excel
+      description: Download all reports formatted as an Excel Spreadsheet. (Accessible by: **1** (Superadmin), **2** (Admin))
+      x-allowed-roles: [1, 2]
+      responses:
+        "200":
+          description: Excel sheet binary stream
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+
+  #########################################
+  # NOTIFICATIONS
+  #########################################
+
+  /notifications:
+    post:
+      tags:
+        - Notifications
+      summary: Create Custom Notification
+      description: Send a notification to a specific user. (Accessible by: **1** (Superadmin), **2** (Admin))
+      x-allowed-roles: [1, 2]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+                - title
+                - message
+              properties:
+                userId:
+                  type: integer
+                  example: 5
+                title:
+                  type: string
+                  example: System Maintenance
+                message:
+                  type: string
+                  example: System will be offline for 10 minutes at 18:00.
+      responses:
+        "201":
+          description: Notification created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/NotificationData'
+
+    get:
+      tags:
+        - Notifications
+      summary: Get My Notifications
+      description: Get notifications sent to the logged-in user. (Accessible by whole: **1** (Superadmin), **2** (Admin), **3** (Employee))
+      x-allowed-roles: [1, 2, 3]
+      responses:
+        "200":
+          description: List of notifications retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NotificationData'
+
+  /notifications/read-all:
+    patch:
+      tags:
+        - Notifications
+      summary: Mark All Notifications As Read
+      description: Mark all unread notifications of the logged-in user as read. (Accessible by whole: **1** (Superadmin), **2** (Admin), **3** (Employee))
+      x-allowed-roles: [1, 2, 3]
+      responses:
+        "200":
+          description: All notifications marked as read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NotificationData'
+
+  /notifications/{id}/read:
+    patch:
+      tags:
+        - Notifications
+      summary: Mark Single Notification As Read
+      description: Mark a specific notification of the logged-in user as read. (Accessible by whole: **1** (Superadmin), **2** (Admin), **3** (Employee))
+      x-allowed-roles: [1, 2, 3]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Notification marked as read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/NotificationData'
+
+  /notifications/unread-count:
+    get:
+      tags:
+        - Notifications
+      summary: Get Unread Notifications Count
+      description: Get the total count of unread notifications for the logged-in user. (Accessible by whole: **1** (Superadmin), **2** (Admin), **3** (Employee))
+      x-allowed-roles: [1, 2, 3]
+      responses:
+        "200":
+          description: Unread notification count retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      unread_count:
+                        type: string
+                        example: "3"
+
+  #########################################
+  # AUDIT LOGS
+  #########################################
+
+  /audit-logs:
+    post:
+      tags:
+        - Audit Logs
+      summary: Create Audit Log Entry
+      description: Manually insert an action log entry. (Accessible by: **1** (Superadmin))
+      x-allowed-roles: [1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+                - action
+              properties:
+                userId:
+                  type: integer
+                  example: 1
+                action:
+                  type: string
+                  example: MANUAL_BACKUP
+                entityType:
+                  type: string
+                  example: DATABASE
+                entityId:
+                  type: integer
+                  example: 0
+                description:
+                  type: string
+                  example: Manually triggered DB schema backup.
+      responses:
+        "201":
+          description: Audit log created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      user_id:
+                        type: integer
+                      action:
+                        type: string
+                      entity_type:
+                        type: string
+                      entity_id:
+                        type: integer
+                      description:
+                        type: string
+                      created_at:
+                        type: string
+                        format: date-time
+
+    get:
+      tags:
+        - Audit Logs
+      summary: Get All Audit Logs
+      description: Retrieve list of all audit actions. (Accessible by: **1** (Superadmin))
+      x-allowed-roles: [1]
+      responses:
+        "200":
+          description: List of audit logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditLogData'
+
+  /audit-logs/{id}:
+    get:
+      tags:
+        - Audit Logs
+      summary: Get Audit Log By ID
+      description: Get details of a specific audit log entry. (Accessible by: **1** (Superadmin))
+      x-allowed-roles: [1]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Audit log details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/AuditLogData'
+        "404":
+          description: Audit log not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  #########################################
+  # DASHBOARD
+  #########################################
+
+  /dashboard/employee:
+    get:
+      tags:
+        - Dashboard
+      summary: Get Employee Dashboard Stats
+      description: Get report statistics for the logged-in employee. (Accessible by: **3** (Employee))
+      x-allowed-roles: [3]
+      responses:
+        "200":
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      total_reports:
+                        type: string
+                        example: "12"
+                      pending_reports:
+                        type: string
+                        example: "2"
+                      approved_reports:
+                        type: string
+                        example: "9"
+                      rejected_reports:
+                        type: string
+                        example: "1"
+                      today_reports:
+                        type: string
+                        example: "1"
+
+  /dashboard/admin:
+    get:
+      tags:
+        - Dashboard
+      summary: Get Admin Dashboard Stats
+      description: Get group overview statistics for the logged-in group admin. (Accessible by: **2** (Admin))
+      x-allowed-roles: [2]
+      responses:
+        "200":
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      total_employees:
+                        type: string
+                        example: "5"
+                      pending_reviews:
+                        type: string
+                        example: "2"
+                      approved_reports:
+                        type: string
+                        example: "24"
+                      rejected_reports:
+                        type: string
+                        example: "3"
+                      today_reports:
+                        type: string
+                        example: "4"
+
+  /dashboard/super-admin:
+    get:
+      tags:
+        - Dashboard
+      summary: Get Superadmin Dashboard Stats
+      description: Get global system overview statistics. (Accessible by: **1** (Superadmin))
+      x-allowed-roles: [1]
+      responses:
+        "200":
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      total_employees:
+                        type: string
+                        example: "20"
+                      total_admins:
+                        type: string
+                        example: "4"
+                      total_groups:
+                        type: string
+                        example: "3"
+                      total_reports:
+                        type: string
+                        example: "115"
+                      pending_reports:
+                        type: string
+                        example: "10"
+                      approved_reports:
+                        type: string
+                        example: "95"
+                      rejected_reports:
+                        type: string
+                        example: "10"
+                      today_reports:
+                        type: string
+                        example: "15"

@@ -44,8 +44,11 @@ VALUES
 
   return result.rows[0];
 };
-const getAllEmployees = async () => {
-  const result = await pool.query(`
+const getAllEmployees = async (page, limit, search) => {
+  const offset = (page - 1) * limit;
+
+  const result = await pool.query(
+    `
     SELECT
       u.id,
       u.employee_id,
@@ -59,11 +62,38 @@ const getAllEmployees = async () => {
     FROM users u
     LEFT JOIN groups g
       ON u.group_id = g.id
-    WHERE u.role_id = 3
+    WHERE
+      u.role_id = 3
+      AND (
+        u.name ILIKE $1 OR
+        u.employee_id ILIKE $1 OR
+        u.email ILIKE $1
+      )
     ORDER BY u.id DESC
-  `);
+    LIMIT $2 OFFSET $3
+    `,
+    [`%${search}%`, limit, offset],
+  );
 
-  return result.rows;
+  const totalResult = await pool.query(
+    `
+    SELECT COUNT(*) AS total
+    FROM users
+    WHERE
+      role_id = 3
+      AND (
+        name ILIKE $1 OR
+        employee_id ILIKE $1 OR
+        email ILIKE $1
+      )
+    `,
+    [`%${search}%`],
+  );
+
+  return {
+    employees: result.rows,
+    total: Number(totalResult.rows[0].total),
+  };
 };
 const getEmployeeById = async (id) => {
   const result = await pool.query(
@@ -173,8 +203,11 @@ const getUserById = async (id) => {
 
   return result.rows[0];
 };
-const getAllAdmins = async () => {
-  const result = await pool.query(`
+const getAllAdmins = async (page, limit, search) => {
+  const offset = (page - 1) * limit;
+
+  const result = await pool.query(
+    `
     SELECT
       u.id,
       u.employee_id,
@@ -188,11 +221,38 @@ const getAllAdmins = async () => {
     FROM users u
     LEFT JOIN groups g
       ON u.group_id = g.id
-    WHERE u.role_id = 2
-    ORDER BY u.id ASC
-  `);
+    WHERE
+      u.role_id = 2
+      AND (
+        u.name ILIKE $1 OR
+        u.employee_id ILIKE $1 OR
+        u.email ILIKE $1
+      )
+    ORDER BY u.id DESC
+    LIMIT $2 OFFSET $3
+    `,
+    [`%${search}%`, limit, offset],
+  );
 
-  return result.rows;
+  const totalResult = await pool.query(
+    `
+    SELECT COUNT(*) AS total
+    FROM users
+    WHERE
+      role_id = 2
+      AND (
+        name ILIKE $1 OR
+        employee_id ILIKE $1 OR
+        email ILIKE $1
+      )
+    `,
+    [`%${search}%`],
+  );
+
+  return {
+    admins: result.rows,
+    total: Number(totalResult.rows[0].total),
+  };
 };
 const getAdminById = async (id) => {
   const result = await pool.query(
@@ -335,6 +395,30 @@ const getAdminsByGroup = async (groupId) => {
 
   return result.rows;
 };
+const getUserByEmail = async (email) => {
+  const result = await pool.query(
+    `
+    SELECT id
+    FROM users
+    WHERE email = $1
+    `,
+    [email],
+  );
+
+  return result.rows[0];
+};
+const getUserByPhone = async (phone) => {
+  const result = await pool.query(
+    `
+    SELECT id
+    FROM users
+    WHERE phone = $1
+    `,
+    [phone],
+  );
+
+  return result.rows[0];
+};
 module.exports = {
   getLastEmployee,
   createEmployee,
@@ -352,4 +436,6 @@ module.exports = {
   changePassword,
   resetPassword,
   getAdminsByGroup,
+  getUserByEmail,
+  getUserByPhone,
 };

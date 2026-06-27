@@ -62,9 +62,27 @@ const getUnreadCount = async (req, res) => {
     });
   }
 };
+const markAllAsRead = async (req, res) => {
+  try {
+    const notifications = await notificationService.markAllAsRead(
+      req.user.userId,
+    );
+
+    res.status(200).json({
+      success: true,
+      data: notifications,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 module.exports = {
   createNotification,
   getMyNotifications,
   markAsRead,
   getUnreadCount,
+  markAllAsRead,
 };

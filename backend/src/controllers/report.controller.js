@@ -21,11 +21,26 @@ const createReport = async (req, res) => {
 };
 const getMyReports = async (req, res) => {
   try {
-    const reports = await reportService.getMyReports(req.user.userId);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const status = req.query.status || "";
+    const reportDate = req.query.reportDate || null;
+
+    const result = await reportService.getMyReports(
+      req.user.userId,
+      page,
+      limit,
+      status,
+      reportDate,
+    );
 
     res.status(200).json({
       success: true,
-      data: reports,
+      page,
+      limit,
+      totalRecords: result.total,
+      totalPages: Math.ceil(result.total / limit),
+      data: result.reports,
     });
   } catch (error) {
     res.status(500).json({
@@ -36,11 +51,28 @@ const getMyReports = async (req, res) => {
 };
 const getTeamReports = async (req, res) => {
   try {
-    const reports = await reportService.getTeamReports(req.user.userId);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || "";
+    const status = req.query.status || "";
+    const reportDate = req.query.reportDate || null;
+
+    const result = await reportService.getTeamReports(
+      req.user.userId,
+      page,
+      limit,
+      search,
+      status,
+      reportDate,
+    );
 
     res.status(200).json({
       success: true,
-      data: reports,
+      page,
+      limit,
+      totalRecords: result.total,
+      totalPages: Math.ceil(result.total / limit),
+      data: result.reports,
     });
   } catch (error) {
     res.status(500).json({

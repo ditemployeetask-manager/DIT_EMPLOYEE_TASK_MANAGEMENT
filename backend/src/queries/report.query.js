@@ -19,20 +19,50 @@ const createReport = async (data) => {
 
   return result.rows[0];
 };
-const getMyReports = async (userId) => {
+const getMyReports = async (userId, page, limit, status, reportDate) => {
+  const offset = (page - 1) * limit;
+
   const result = await pool.query(
     `
     SELECT *
     FROM reports
-    WHERE user_id = $1
+    WHERE
+      user_id = $1
+      AND ($2 = '' OR status = $2)
+      AND ($3::date IS NULL OR report_date = $3)
     ORDER BY report_date DESC
+    LIMIT $4 OFFSET $5
     `,
-    [userId],
+    [userId, status, reportDate || null, limit, offset],
   );
 
-  return result.rows;
+  const totalResult = await pool.query(
+    `
+    SELECT COUNT(*) AS total
+    FROM reports
+    WHERE
+      user_id = $1
+      AND ($2 = '' OR status = $2)
+      AND ($3::date IS NULL OR report_date = $3)
+    `,
+    [userId, status, reportDate || null],
+  );
+
+  return {
+    reports: result.rows,
+    total: Number(totalResult.rows[0].total),
+  };
 };
-const getTeamReports = async (groupId) => {
+const getTeamReports = async (
+  groupId,
+  page,
+  limit,
+  search,
+  status,
+  reportDate,
+) => {
+  const offset = (page - 1) * limit;
+
   const result = await pool.query(
     `
     SELECT
@@ -50,13 +80,42 @@ const getTeamReports = async (groupId) => {
       ON r.user_id = u.id
     LEFT JOIN groups g
       ON u.group_id = g.id
-    WHERE u.group_id = $1
+    WHERE
+      u.group_id = $1
+      AND (
+        u.name ILIKE $2
+        OR u.employee_id ILIKE $2
+      )
+      AND ($3 = '' OR r.status = $3)
+      AND ($4::date IS NULL OR r.report_date = $4)
     ORDER BY r.report_date DESC
+    LIMIT $5 OFFSET $6
     `,
-    [groupId],
+    [groupId, `%${search}%`, status, reportDate || null, limit, offset],
   );
 
-  return result.rows;
+  const totalResult = await pool.query(
+    `
+    SELECT COUNT(*) AS total
+    FROM reports r
+    JOIN users u
+      ON r.user_id = u.id
+    WHERE
+      u.group_id = $1
+      AND (
+        u.name ILIKE $2
+        OR u.employee_id ILIKE $2
+      )
+      AND ($3 = '' OR r.status = $3)
+      AND ($4::date IS NULL OR r.report_date = $4)
+    `,
+    [groupId, `%${search}%`, status, reportDate || null],
+  );
+
+  return {
+    reports: result.rows,
+    total: Number(totalResult.rows[0].total),
+  };
 };
 const reviewReport = async (reportId, status, adminRemarks, reviewedBy) => {
   const result = await pool.query(
@@ -104,8 +163,11 @@ const updateReport = async (reportId, workDone, tomorrowPlan) => {
 
   return result.rows[0];
 };
-const getAllTeamReports = async () => {
-  const result = await pool.query(`
+const getAllTeamReports = async (page, limit, search, status, reportDate) => {
+  const offset = (page - 1) * limit;
+
+  const result = await pool.query(
+    `
     SELECT
       r.id,
       r.work_done,
@@ -121,10 +183,40 @@ const getAllTeamReports = async () => {
       ON r.user_id = u.id
     LEFT JOIN groups g
       ON u.group_id = g.id
+    WHERE
+      (
+        u.name ILIKE $1
+        OR u.employee_id ILIKE $1
+      )
+      AND ($2 = '' OR r.status = $2)
+      AND ($3::date IS NULL OR r.report_date = $3)
     ORDER BY r.report_date DESC
-  `);
+    LIMIT $4 OFFSET $5
+    `,
+    [`%${search}%`, status, reportDate || null, limit, offset],
+  );
 
-  return result.rows;
+  const totalResult = await pool.query(
+    `
+    SELECT COUNT(*) AS total
+    FROM reports r
+    JOIN users u
+      ON r.user_id = u.id
+    WHERE
+      (
+        u.name ILIKE $1
+        OR u.employee_id ILIKE $1
+      )
+      AND ($2 = '' OR r.status = $2)
+      AND ($3::date IS NULL OR r.report_date = $3)
+    `,
+    [`%${search}%`, status, reportDate || null],
+  );
+
+  return {
+    reports: result.rows,
+    total: Number(totalResult.rows[0].total),
+  };
 };
 const getReportsForExport = async () => {
   const result = await pool.query(`
