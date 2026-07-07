@@ -1,4 +1,4 @@
-﻿CREATE TABLE roles (
+CREATE TABLE roles (
     id SERIAL PRIMARY KEY,
     role_name VARCHAR(50) UNIQUE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -33,8 +33,6 @@ CREATE TABLE users (
 
     role_id INT NOT NULL REFERENCES roles(id),
 
-    group_id INT REFERENCES groups(id),
-
     designation VARCHAR(100),
 
     status BOOLEAN DEFAULT TRUE,
@@ -46,6 +44,12 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE user_groups (
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    group_id INT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+    PRIMARY KEY (user_id, group_id)
 );
 
 CREATE TABLE reports (

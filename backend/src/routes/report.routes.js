@@ -6,6 +6,7 @@ const reportController = require("../controllers/report.controller");
 const verifyToken = require("../middleware/auth.middleware");
 const authorizeRoles = require("../middleware/role.middleware");
 const validate = require("../middleware/validate.middleware");
+const upload = require("../middlewares/upload.middleware");
 const { idParamSchema } = require("../validations/user.validation");
 const {
   createReportSchema,
@@ -19,6 +20,10 @@ router.post(
   "/",
   verifyToken,
   authorizeRoles(3),
+  (req, res, next) => upload(req, res, (err) => {
+    if (err) return res.status(400).json({ success: false, message: err.message });
+    next();
+  }),
   validate(createReportSchema),
   reportController.createReport
 );
@@ -49,14 +54,32 @@ router.put(
   verifyToken,
   authorizeRoles(3),
   validate(idParamSchema, "params"),
+  (req, res, next) => upload(req, res, (err) => {
+    if (err) return res.status(400).json({ success: false, message: err.message });
+    next();
+  }),
   validate(updateReportSchema),
-  reportController.updateReport,
+  reportController.updateReport
 );
 router.get(
   "/export",
   verifyToken,
   authorizeRoles(1, 2),
   reportController.exportAllReports,
+);
+router.get(
+  "/:id",
+  verifyToken,
+  authorizeRoles(1, 2, 3),
+  validate(idParamSchema, "params"),
+  reportController.getReportById,
+);
+router.delete(
+  "/:id",
+  verifyToken,
+  authorizeRoles(3),
+  validate(idParamSchema, "params"),
+  reportController.deleteReport,
 );
 
 module.exports = router;

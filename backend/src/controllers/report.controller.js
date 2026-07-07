@@ -1,10 +1,19 @@
-﻿const reportService = require("../services/report.service");
+const reportService = require("../services/report.service");
 
 const createReport = async (req, res) => {
   try {
+    // Build attachment metadata from uploaded files
+    const attachments = (req.files || []).map((f) => ({
+      originalName: f.originalname,
+      filename: f.filename,
+      size: f.size,
+      mimetype: f.mimetype,
+      url: `/uploads/${f.filename}`,
+    }));
+
     const report = await reportService.createReport(
       req.user.userId,
-      req.body,
+      { ...req.body, attachments },
       req.user.userId,
     );
 
@@ -25,6 +34,8 @@ const getMyReports = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const status = req.query.status || "";
     const reportDate = req.query.reportDate || null;
+    const startDate = req.query.startDate || null;
+    const endDate = req.query.endDate || null;
 
     const result = await reportService.getMyReports(
       req.user.userId,
@@ -32,6 +43,8 @@ const getMyReports = async (req, res) => {
       limit,
       status,
       reportDate,
+      startDate,
+      endDate,
     );
 
     res.status(200).json({
@@ -102,10 +115,28 @@ const reviewReport = async (req, res) => {
 };
 const updateReport = async (req, res) => {
   try {
+    // Parse any newly uploaded files
+    const newFiles = (req.files || []).map((f) => ({
+      originalName: f.originalname,
+      filename: f.filename,
+      size: f.size,
+      mimetype: f.mimetype,
+      url: `/uploads/${f.filename}`,
+    }));
+
+    // Merge with any existing attachments sent in body (as JSON string)
+    let existingAttachments = [];
+    if (req.body.existingAttachments) {
+      try {
+        existingAttachments = JSON.parse(req.body.existingAttachments);
+      } catch (_) {}
+    }
+    const attachments = [...existingAttachments, ...newFiles];
+
     const report = await reportService.updateReport(
       req.params.id,
       req.user.userId,
-      req.body,
+      { ...req.body, attachments },
       req.user.userId,
     );
 
@@ -122,7 +153,15 @@ const updateReport = async (req, res) => {
 };
 const exportAllReports = async (req, res) => {
   try {
-    const workbook = await reportService.exportAllReports();
+    const filters = {
+      groupId: req.query.groupId ? parseInt(req.query.groupId) : null,
+      userId: req.query.userId ? parseInt(req.query.userId) : null,
+      roleId: req.query.roleId ? parseInt(req.query.roleId) : null,
+      startDate: req.query.startDate || null,
+      endDate: req.query.endDate || null,
+    };
+
+    const workbook = await reportService.exportAllReports(filters);
 
     res.setHeader(
       "Content-Type",
@@ -141,6 +180,48 @@ const exportAllReports = async (req, res) => {
     });
   }
 };
+
+const getReportById = async (req, res) => {
+  try {
+    const report = await reportService.getReportById(
+      req.params.id,
+      req.user.userId,
+      req.user.roleId
+    );
+
+    res.status(200).json({
+      success: true,
+      data: report,
+    });
+  } catch (error) {
+    res.status(error.message === "Unauthorized" ? 403 : 404).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const deleteReport = async (req, res) => {
+  try {
+    const report = await reportService.deleteReport(
+      req.params.id,
+      req.user.userId,
+      req.user.roleId
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Report deleted successfully",
+      data: report,
+    });
+  } catch (error) {
+    res.status(error.message === "Unauthorized" ? 403 : 400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   createReport,
   getMyReports,
@@ -148,4 +229,6 @@ module.exports = {
   reviewReport,
   updateReport,
   exportAllReports,
+  getReportById,
+  deleteReport,
 };

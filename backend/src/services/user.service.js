@@ -1,4 +1,4 @@
-﻿const generateEmployeeId = require("../utils/generateEmployeeId");
+const generateEmployeeId = require("../utils/generateEmployeeId");
 const userQuery = require("../queries/user.query");
 const generatePassword = require("../utils/generatePassword");
 const bcrypt = require("bcrypt");
@@ -26,17 +26,17 @@ const createEmployee = async (employeeData, createdBy) => {
 
   const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
 
-const employee = await userQuery.createEmployee({
-  employeeId,
-  name: employeeData.name,
-  email: employeeData.email,
-  phone: employeeData.phone,
-  password: hashedPassword,
-  roleId: 3,
-  groupId: employeeData.groupId,
-  designation: employeeData.designation,
-  createdBy,
-});
+  const employee = await userQuery.createEmployee({
+    employeeId,
+    name: employeeData.name,
+    email: employeeData.email,
+    phone: employeeData.phone,
+    password: hashedPassword,
+    roleId: 3,
+    groupIds: employeeData.groupIds,
+    designation: employeeData.designation,
+    createdBy,
+  });
 
   delete employee.password;
   await createNotification(
@@ -62,9 +62,10 @@ Please change your temporary password after first login.`,
   };
 };
 
-const getAllEmployees = async (page, limit, search) => {
-  return await userQuery.getAllEmployees(page, limit, search);
+const getAllEmployees = async (page, limit, search, roleId = 1, userId = null) => {
+  return await userQuery.getAllEmployees(page, limit, search, roleId, userId);
 };
+
 const getEmployeeById = async (id) => {
   const employee = await userQuery.getEmployeeById(id);
 
@@ -74,6 +75,7 @@ const getEmployeeById = async (id) => {
 
   return employee;
 };
+
 const updateEmployee = async (id, employeeData, updatedBy) => {
   const employee = await userQuery.updateEmployee(id, employeeData);
 
@@ -116,7 +118,7 @@ const createAdmin = async (adminData, createdBy) => {
     phone: adminData.phone,
     password: hashedPassword,
     roleId: 2,
-    groupId: adminData.groupId,
+    groupIds: adminData.groupIds,
     designation: adminData.designation,
     createdBy,
   });
@@ -144,25 +146,29 @@ Please change your temporary password after first login.`,
     admin,
   };
 };
-const assignAdminGroup = async (adminId, groupId, updatedBy) => {
-  const admin = await userQuery.assignAdminGroup(adminId, groupId);
+
+const assignAdminGroup = async (adminId, groupIds, updatedBy) => {
+  const admin = await userQuery.assignAdminGroup(adminId, groupIds);
 
   await createAuditLog(
     updatedBy,
     "ASSIGN_ADMIN_GROUP",
     "USER",
     admin.id,
-    `Assigned admin ${admin.employee_id} to group ${groupId}`,
+    `Assigned admin ${admin.employee_id} to groups ${JSON.stringify(groupIds)}`,
   );
 
   return admin;
 };
+
 const getAllAdmins = async (page, limit, search) => {
   return await userQuery.getAllAdmins(page, limit, search);
 };
+
 const getAdminById = async (id) => {
   return await userQuery.getAdminById(id);
 };
+
 const updateAdmin = async (id, adminData, updatedBy) => {
   const admin = await userQuery.updateAdmin(id, adminData);
 
@@ -176,6 +182,7 @@ const updateAdmin = async (id, adminData, updatedBy) => {
 
   return admin;
 };
+
 const updateAdminStatus = async (id, status, updatedBy) => {
   const admin = await userQuery.updateAdminStatus(id, status);
 
@@ -189,6 +196,7 @@ const updateAdminStatus = async (id, status, updatedBy) => {
 
   return admin;
 };
+
 const resetPassword = async (userId, resetBy) => {
   const temporaryPassword = generatePassword();
 
@@ -214,6 +222,37 @@ const resetPassword = async (userId, resetBy) => {
     user,
   };
 };
+
+const getProfile = async (userId) => {
+  return await userQuery.getProfile(userId);
+};
+
+const updateProfile = async (userId, data) => {
+  const { name, email, phone } = data;
+
+  const emailExists = await userQuery.getUserByEmail(email);
+  if (emailExists && emailExists.id !== userId) {
+    throw new Error("Email already exists");
+  }
+
+  const phoneExists = await userQuery.getUserByPhone(phone);
+  if (phoneExists && phoneExists.id !== userId) {
+    throw new Error("Phone number already exists");
+  }
+
+  const updatedProfile = await userQuery.updateProfile(userId, name, email, phone);
+
+  await createAuditLog(
+    userId,
+    "UPDATE_PROFILE",
+    "USER",
+    userId,
+    `Updated own profile details`,
+  );
+
+  return updatedProfile;
+};
+
 module.exports = {
   createEmployee,
   getAllEmployees,
@@ -226,4 +265,6 @@ module.exports = {
   updateAdmin,
   updateAdminStatus,
   resetPassword,
+  getProfile,
+  updateProfile,
 };

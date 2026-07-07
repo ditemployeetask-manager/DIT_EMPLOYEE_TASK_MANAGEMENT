@@ -14,7 +14,23 @@ const {
   assignAdminGroupSchema,
   updateAdminStatusSchema,
   paginationSchema,
+  updateProfileSchema,
 } = require("../validations/user.validation");
+
+router.get(
+  "/profile",
+  verifyToken,
+  authorizeRoles(1, 2, 3),
+  userController.getProfile
+);
+
+router.put(
+  "/profile",
+  verifyToken,
+  authorizeRoles(1, 2, 3),
+  validate(updateProfileSchema),
+  userController.updateProfile
+);
 
 router.post(
   "/employees",

@@ -1,4 +1,4 @@
-﻿const groupService = require("../services/group.service");
+const groupService = require("../services/group.service");
 
 const createGroup = async (req, res) => {
   try {
@@ -17,7 +17,7 @@ const createGroup = async (req, res) => {
 };
 const getAllGroups = async (req, res) => {
   try {
-    const groups = await groupService.getAllGroups();
+    const groups = await groupService.getAllGroups(req.user.roleId, req.user.userId);
 
     res.status(200).json({
       success: true,

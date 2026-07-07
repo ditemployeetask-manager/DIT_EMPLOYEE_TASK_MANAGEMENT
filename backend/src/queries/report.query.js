@@ -1,25 +1,27 @@
-﻿const pool = require("../config/db");
+const pool = require("../config/db");
 
 const createReport = async (data) => {
   const result = await pool.query(
     `
-    INSERT INTO reports
-    (
+    INSERT INTO reports (
       user_id,
+      title,
       work_done,
       tomorrow_plan,
-      report_date
+      report_date,
+      attachments
     )
     VALUES
-    ($1,$2,$3,$4)
+    ($1, $2, $3, $4, $5, $6)
     RETURNING *
     `,
-    [data.userId, data.workDone, data.tomorrowPlan, data.reportDate],
+    [data.userId, data.title || "Daily Status Report", data.workDone, data.tomorrowPlan, data.reportDate, JSON.stringify(data.attachments || [])],
   );
 
   return result.rows[0];
 };
-const getMyReports = async (userId, page, limit, status, reportDate) => {
+
+const getMyReports = async (userId, page, limit, status, reportDate, startDate, endDate) => {
   const offset = (page - 1) * limit;
 
   const result = await pool.query(
@@ -30,10 +32,12 @@ const getMyReports = async (userId, page, limit, status, reportDate) => {
       user_id = $1
       AND ($2 = '' OR status = $2)
       AND ($3::date IS NULL OR report_date = $3)
+      AND ($4::date IS NULL OR report_date >= $4)
+      AND ($5::date IS NULL OR report_date <= $5)
     ORDER BY report_date DESC
-    LIMIT $4 OFFSET $5
+    LIMIT $6 OFFSET $7
     `,
-    [userId, status, reportDate || null, limit, offset],
+    [userId, status, reportDate || null, startDate || null, endDate || null, limit, offset],
   );
 
   const totalResult = await pool.query(
@@ -44,8 +48,10 @@ const getMyReports = async (userId, page, limit, status, reportDate) => {
       user_id = $1
       AND ($2 = '' OR status = $2)
       AND ($3::date IS NULL OR report_date = $3)
+      AND ($4::date IS NULL OR report_date >= $4)
+      AND ($5::date IS NULL OR report_date <= $5)
     `,
-    [userId, status, reportDate || null],
+    [userId, status, reportDate || null, startDate || null, endDate || null],
   );
 
   return {
@@ -53,8 +59,9 @@ const getMyReports = async (userId, page, limit, status, reportDate) => {
     total: Number(totalResult.rows[0].total),
   };
 };
+
 const getTeamReports = async (
-  groupId,
+  groupIds,
   page,
   limit,
   search,
@@ -67,6 +74,7 @@ const getTeamReports = async (
     `
     SELECT
       r.id,
+      r.title,
       r.work_done,
       r.tomorrow_plan,
       r.admin_remarks,
@@ -74,14 +82,20 @@ const getTeamReports = async (
       r.report_date,
       u.employee_id,
       u.name,
-      g.group_name
+      (
+        SELECT ARRAY_TO_STRING(ARRAY_AGG(g.group_name), ', ')
+        FROM user_groups ug
+        JOIN groups g ON ug.group_id = g.id
+        WHERE ug.user_id = u.id
+      ) AS group_name
     FROM reports r
     JOIN users u
       ON r.user_id = u.id
-    LEFT JOIN groups g
-      ON u.group_id = g.id
     WHERE
-      u.group_id = $1
+      EXISTS (
+        SELECT 1 FROM user_groups ug2
+        WHERE ug2.user_id = u.id AND ug2.group_id = ANY($1)
+      )
       AND (
         u.name ILIKE $2
         OR u.employee_id ILIKE $2
@@ -91,7 +105,7 @@ const getTeamReports = async (
     ORDER BY r.report_date DESC
     LIMIT $5 OFFSET $6
     `,
-    [groupId, `%${search}%`, status, reportDate || null, limit, offset],
+    [groupIds, `%${search}%`, status, reportDate || null, limit, offset],
   );
 
   const totalResult = await pool.query(
@@ -101,7 +115,10 @@ const getTeamReports = async (
     JOIN users u
       ON r.user_id = u.id
     WHERE
-      u.group_id = $1
+      EXISTS (
+        SELECT 1 FROM user_groups ug2
+        WHERE ug2.user_id = u.id AND ug2.group_id = ANY($1)
+      )
       AND (
         u.name ILIKE $2
         OR u.employee_id ILIKE $2
@@ -109,7 +126,7 @@ const getTeamReports = async (
       AND ($3 = '' OR r.status = $3)
       AND ($4::date IS NULL OR r.report_date = $4)
     `,
-    [groupId, `%${search}%`, status, reportDate || null],
+    [groupIds, `%${search}%`, status, reportDate || null],
   );
 
   return {
@@ -117,52 +134,76 @@ const getTeamReports = async (
     total: Number(totalResult.rows[0].total),
   };
 };
+
 const reviewReport = async (reportId, status, adminRemarks, reviewedBy) => {
   const result = await pool.query(
     `
-  UPDATE reports
-  SET
-    status = $1,
-    admin_remarks = $2,
-    reviewed_by = $3,
-    updated_at = CURRENT_TIMESTAMP
-  WHERE id = $4
-  RETURNING *
-  `,
+    UPDATE reports
+    SET
+      status = $1,
+      admin_remarks = $2,
+      reviewed_by = $3,
+      reviewed_at = CURRENT_TIMESTAMP,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = $4
+    RETURNING *
+    `,
     [status, adminRemarks, reviewedBy, reportId],
   );
 
   return result.rows[0];
 };
-const getReportById = async (reportId) => {
+
+const getReportById = async (id) => {
   const result = await pool.query(
     `
-    SELECT *
-    FROM reports
-    WHERE id = $1
+    SELECT
+      r.*,
+      u.name AS employee_name,
+      u.employee_id AS employee_code,
+      u.designation,
+      reviewer.name AS reviewer_name,
+      reviewer.employee_id AS reviewer_code,
+      (
+        SELECT ARRAY_TO_STRING(ARRAY_AGG(g.group_name), ', ')
+        FROM user_groups ug
+        JOIN groups g ON ug.group_id = g.id
+        WHERE ug.user_id = u.id
+      ) AS group_name
+    FROM reports r
+    JOIN users u ON r.user_id = u.id
+    LEFT JOIN users reviewer ON r.reviewed_by = reviewer.id
+    WHERE r.id = $1
     `,
-    [reportId],
+    [id],
   );
 
   return result.rows[0];
 };
-const updateReport = async (reportId, workDone, tomorrowPlan) => {
+
+const updateReport = async (id, title, workDone, tomorrowPlan, attachments) => {
   const result = await pool.query(
     `
     UPDATE reports
     SET
-      work_done = $1,
-      tomorrow_plan = $2,
-      updated_at = CURRENT_TIMESTAMP,
-      status = 'PENDING'
-    WHERE id = $3
+      title = $1,
+      work_done = $2,
+      tomorrow_plan = $3,
+      attachments = $4,
+      status = 'PENDING',
+      reviewed_by = NULL,
+      reviewed_at = NULL,
+      admin_remarks = NULL,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = $5
     RETURNING *
     `,
-    [workDone, tomorrowPlan, reportId],
+    [title || "Daily Status Report", workDone, tomorrowPlan, JSON.stringify(attachments || []), id],
   );
 
   return result.rows[0];
 };
+
 const getAllTeamReports = async (page, limit, search, status, reportDate) => {
   const offset = (page - 1) * limit;
 
@@ -170,6 +211,7 @@ const getAllTeamReports = async (page, limit, search, status, reportDate) => {
     `
     SELECT
       r.id,
+      r.title,
       r.work_done,
       r.tomorrow_plan,
       r.admin_remarks,
@@ -177,12 +219,15 @@ const getAllTeamReports = async (page, limit, search, status, reportDate) => {
       r.report_date,
       u.employee_id,
       u.name,
-      g.group_name
+      (
+        SELECT ARRAY_TO_STRING(ARRAY_AGG(g.group_name), ', ')
+        FROM user_groups ug
+        JOIN groups g ON ug.group_id = g.id
+        WHERE ug.user_id = u.id
+      ) AS group_name
     FROM reports r
     JOIN users u
       ON r.user_id = u.id
-    LEFT JOIN groups g
-      ON u.group_id = g.id
     WHERE
       (
         u.name ILIKE $1
@@ -218,12 +263,20 @@ const getAllTeamReports = async (page, limit, search, status, reportDate) => {
     total: Number(totalResult.rows[0].total),
   };
 };
-const getReportsForExport = async () => {
-  const result = await pool.query(`
+
+const getReportsForExport = async (filters = {}) => {
+  const { groupId, userId, roleId, startDate, endDate } = filters;
+  const result = await pool.query(
+    `
     SELECT
       u.employee_id,
       u.name,
-      g.group_name,
+      (
+        SELECT ARRAY_TO_STRING(ARRAY_AGG(g.group_name), ', ')
+        FROM user_groups ug
+        JOIN groups g ON ug.group_id = g.id
+        WHERE ug.user_id = u.id
+      ) AS group_name,
       r.report_date,
       r.work_done,
       r.tomorrow_plan,
@@ -233,15 +286,37 @@ const getReportsForExport = async () => {
     FROM reports r
     JOIN users u
       ON r.user_id = u.id
-    LEFT JOIN groups g
-      ON u.group_id = g.id
     LEFT JOIN users reviewer
       ON r.reviewed_by = reviewer.id
+    WHERE
+      ($1::integer IS NULL OR EXISTS (
+        SELECT 1 FROM user_groups ug WHERE ug.user_id = u.id AND ug.group_id = $1
+      ))
+      AND ($2::integer IS NULL OR r.user_id = $2)
+      AND ($3::integer IS NULL OR u.role_id = $3)
+      AND ($4::date IS NULL OR r.report_date >= $4)
+      AND ($5::date IS NULL OR r.report_date <= $5)
     ORDER BY r.report_date DESC
-  `);
+    `,
+    [groupId || null, userId || null, roleId || null, startDate || null, endDate || null],
+  );
 
   return result.rows;
 };
+
+const deleteReport = async (id) => {
+  const result = await pool.query(
+    `
+    DELETE FROM reports
+    WHERE id = $1
+    RETURNING *
+    `,
+    [id],
+  );
+
+  return result.rows[0];
+};
+
 module.exports = {
   createReport,
   getMyReports,
@@ -251,4 +326,5 @@ module.exports = {
   updateReport,
   getAllTeamReports,
   getReportsForExport,
+  deleteReport,
 };

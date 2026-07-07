@@ -1,4 +1,4 @@
-﻿const pool = require("../config/db");
+const pool = require("../config/db");
 
 const createGroup = async (groupData) => {
   const result = await pool.query(
@@ -17,11 +17,44 @@ const createGroup = async (groupData) => {
 
   return result.rows[0];
 };
-const getAllGroups = async () => {
+const getAllGroups = async (roleId = 1, userId = null) => {
+  if (roleId === 2) {
+    const result = await pool.query(
+      `
+      SELECT
+        g.*,
+        COALESCE(
+          JSON_AGG(
+            JSON_BUILD_OBJECT('id', u.id, 'name', u.name, 'employee_id', u.employee_id)
+          ) FILTER (WHERE u.id IS NOT NULL),
+          '[]'
+        ) AS admins
+      FROM groups g
+      JOIN user_groups ug_admin ON g.id = ug_admin.group_id AND ug_admin.user_id = $1
+      LEFT JOIN user_groups ug ON g.id = ug.group_id
+      LEFT JOIN users u ON ug.user_id = u.id AND u.role_id = 2
+      GROUP BY g.id
+      ORDER BY g.id ASC
+      `,
+      [userId]
+    );
+    return result.rows;
+  }
+
   const result = await pool.query(`
-    SELECT *
-    FROM groups
-    ORDER BY id ASC
+    SELECT
+      g.*,
+      COALESCE(
+        JSON_AGG(
+          JSON_BUILD_OBJECT('id', u.id, 'name', u.name, 'employee_id', u.employee_id)
+        ) FILTER (WHERE u.id IS NOT NULL),
+        '[]'
+      ) AS admins
+    FROM groups g
+    LEFT JOIN user_groups ug ON g.id = ug.group_id
+    LEFT JOIN users u ON ug.user_id = u.id AND u.role_id = 2
+    GROUP BY g.id
+    ORDER BY g.id ASC
   `);
 
   return result.rows;
@@ -29,9 +62,19 @@ const getAllGroups = async () => {
 const getGroupById = async (id) => {
   const result = await pool.query(
     `
-    SELECT *
-    FROM groups
-    WHERE id = $1
+    SELECT
+      g.*,
+      COALESCE(
+        JSON_AGG(
+          JSON_BUILD_OBJECT('id', u.id, 'name', u.name, 'employee_id', u.employee_id)
+        ) FILTER (WHERE u.id IS NOT NULL),
+        '[]'
+      ) AS admins
+    FROM groups g
+    LEFT JOIN user_groups ug ON g.id = ug.group_id
+    LEFT JOIN users u ON ug.user_id = u.id AND u.role_id = 2
+    WHERE g.id = $1
+    GROUP BY g.id
     `,
     [id],
   );

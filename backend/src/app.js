@@ -1,5 +1,6 @@
-﻿const express = require("express");
+const express = require("express");
 const cors = require("cors");
+const path = require("path");
 const pool = require("./config/db");
 const userRoutes = require("./routes/user.routes");
 const authRoutes = require("./routes/auth.routes");
@@ -16,6 +17,7 @@ const app = express();
 app.use(cors());
 app.use(helmet());
 app.use(express.json());
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 //routes
 app.use("/api/users", userRoutes);

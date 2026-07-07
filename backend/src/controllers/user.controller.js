@@ -1,4 +1,4 @@
-﻿const userService = require("../services/user.service");
+const userService = require("../services/user.service");
 
 const createEmployee = async (req, res) => {
   try {
@@ -23,7 +23,7 @@ const getAllEmployees = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const search = req.query.search || "";
 
-    const result = await userService.getAllEmployees(page, limit, search);
+    const result = await userService.getAllEmployees(page, limit, search, req.user.roleId, req.user.userId);
 
     res.status(200).json({
       success: true,
@@ -102,7 +102,7 @@ const assignAdminGroup = async (req, res) => {
   try {
     const admin = await userService.assignAdminGroup(
       req.params.id,
-      req.body.groupId,
+      req.body.groupIds,
       req.user.userId,
     );
 
@@ -211,6 +211,37 @@ const resetPassword = async (req, res) => {
     });
   }
 };
+
+const getProfile = async (req, res) => {
+  try {
+    const profile = await userService.getProfile(req.user.userId);
+    res.status(200).json({
+      success: true,
+      data: profile,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const updateProfile = async (req, res) => {
+  try {
+    const profile = await userService.updateProfile(req.user.userId, req.body);
+    res.status(200).json({
+      success: true,
+      data: profile,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   createEmployee,
   getAllEmployees,
@@ -223,4 +254,6 @@ module.exports = {
   updateAdmin,
   updateAdminStatus,
   resetPassword,
+  getProfile,
+  updateProfile,
 };

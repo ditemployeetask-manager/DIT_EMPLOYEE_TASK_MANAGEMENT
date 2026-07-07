@@ -1,11 +1,14 @@
 const Joi = require("joi");
 
 const createReportSchema = Joi.object({
+  title: Joi.string().min(2).max(100).optional().default("Daily Status Report").allow(""),
+  reportTitle: Joi.string().min(2).max(100).optional().allow(""),
   workDone: Joi.string().min(5).required().messages({
     "string.min": "Work Done description must be at least 5 characters long",
     "any.required": "Work Done description is required",
   }),
   tomorrowPlan: Joi.string().optional().allow(""),
+  tomorrow_plan: Joi.string().optional().allow(""),
   reportDate: Joi.string()
     .pattern(/^\d{4}-\d{2}-\d{2}$/)
     .required()
@@ -16,11 +19,15 @@ const createReportSchema = Joi.object({
 });
 
 const updateReportSchema = Joi.object({
+  title: Joi.string().min(2).max(100).optional().allow(""),
+  reportTitle: Joi.string().min(2).max(100).optional().allow(""),
   workDone: Joi.string().min(5).required().messages({
     "string.min": "Work Done description must be at least 5 characters long",
     "any.required": "Work Done description is required",
   }),
   tomorrowPlan: Joi.string().optional().allow(""),
+  tomorrow_plan: Joi.string().optional().allow(""),
+  existingAttachments: Joi.string().optional().allow(""),
 });
 
 const reviewReportSchema = Joi.object({
@@ -39,11 +46,19 @@ const queryReportsSchema = Joi.object({
     .pattern(/^\d{4}-\d{2}-\d{2}$/)
     .optional()
     .allow(""),
+  startDate: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .allow(""),
+  endDate: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .allow(""),
 });
 
 const teamReportsQuerySchema = Joi.object({
   page: Joi.number().integer().min(1).optional().default(1),
-  limit: Joi.number().integer().min(1).max(100).optional().default(10),
+  limit: Joi.number().integer().min(1).max(1000).optional().default(10),
   search: Joi.string().optional().allow(""),
   status: Joi.string().valid("PENDING", "APPROVED", "REJECTED").optional().allow(""),
   reportDate: Joi.string()

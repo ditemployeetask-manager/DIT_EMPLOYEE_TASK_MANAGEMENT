@@ -86,10 +86,17 @@ components:
         role_id:
           type: integer
           example: 3
-        group_id:
-          type: integer
-          nullable: true
-          example: 1
+        groups:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 1
+              group_name:
+                type: string
+                example: Development Team
         designation:
           type: string
           example: Software Engineer
@@ -349,7 +356,7 @@ paths:
                 - email
                 - phone
                 - designation
-                - groupId
+                - groupIds
               properties:
                 name:
                   type: string
@@ -363,9 +370,11 @@ paths:
                 designation:
                   type: string
                   example: Software Engineer
-                groupId:
-                  type: integer
-                  example: 1
+                groupIds:
+                  type: array
+                  items:
+                    type: integer
+                  example: [1, 2]
       responses:
         "201":
           description: Employee created successfully
@@ -557,7 +566,7 @@ paths:
                 - email
                 - phone
                 - designation
-                - groupId
+                - groupIds
                 - status
               properties:
                 name:
@@ -572,9 +581,11 @@ paths:
                 designation:
                   type: string
                   example: Senior Software Engineer
-                groupId:
-                  type: integer
-                  example: 1
+                groupIds:
+                  type: array
+                  items:
+                    type: integer
+                  example: [1, 2]
                 status:
                   type: boolean
                   example: true
@@ -610,7 +621,7 @@ paths:
                 - email
                 - phone
                 - designation
-                - groupId
+                - groupIds
               properties:
                 name:
                   type: string
@@ -624,9 +635,11 @@ paths:
                 designation:
                   type: string
                   example: Technical Manager
-                groupId:
-                  type: integer
-                  example: 1
+                groupIds:
+                  type: array
+                  items:
+                    type: integer
+                  example: [1, 2]
       responses:
         "201":
           description: Admin created successfully
@@ -813,7 +826,7 @@ paths:
                 - email
                 - phone
                 - designation
-                - groupId
+                - groupIds
               properties:
                 name:
                   type: string
@@ -827,9 +840,11 @@ paths:
                 designation:
                   type: string
                   example: Managing Admin
-                groupId:
-                  type: integer
-                  example: 1
+                groupIds:
+                  type: array
+                  items:
+                    type: integer
+                  example: [1, 2]
       responses:
         "200":
           description: Admin updated successfully
@@ -884,11 +899,13 @@ paths:
             schema:
               type: object
               required:
-                - groupId
+                - groupIds
               properties:
-                groupId:
-                  type: integer
-                  example: 2
+                groupIds:
+                  type: array
+                  items:
+                    type: integer
+                  example: [1, 2]
       responses:
         "200":
           description: Group assigned successfully

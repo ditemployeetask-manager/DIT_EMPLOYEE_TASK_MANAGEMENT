@@ -1,4 +1,4 @@
-﻿const groupQuery = require("../queries/group.query");
+const groupQuery = require("../queries/group.query");
 const createAuditLog = require("../utils/createAuditLog");
 
 const createGroup = async (groupData, createdBy) => {
@@ -19,8 +19,8 @@ const createGroup = async (groupData, createdBy) => {
 
   return group;
 };
-const getAllGroups = async () => {
-  return await groupQuery.getAllGroups();
+const getAllGroups = async (roleId = 1, userId = null) => {
+  return await groupQuery.getAllGroups(roleId, userId);
 };
 const getGroupById = async (id) => {
   return await groupQuery.getGroupById(id);
